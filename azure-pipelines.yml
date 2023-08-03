@@ -12,10 +12,10 @@ variables:
   azureSubscription: '5ffd233c-1117-4a5d-9c17-969f51e6a42e'
 
   # Web app name
-  webAppName: 'mySuperAwesomeApp'
+  webAppName: 'MyFisrtWebAppNamep'
 
   # Environment name
-  environmentName: 'mySuperAwesomeApp'
+  environmentName: 'MyFisrtWebAppName'
 
   # Agent VM image name
   vmImageName: 'ubuntu-latest'
@@ -33,7 +33,7 @@ stages:
     - task: Maven@3
       displayName: 'Maven Package'
       inputs:
-        mavenPomFile: 'Test1/MyWebApp/pom.xml'
+        mavenPomFile: 'MyWebApp/pom.xml'
 
     - task: CopyFiles@2
       displayName: 'Copy Files to artifact staging directory'
@@ -60,7 +60,7 @@ stages:
         deploy:
           steps:
           - task: AzureWebApp@1
-            displayName: 'Azure Web App Deploy: mySuperAwesomeApp'
+            displayName: 'Azure Web App Deploy: MyFisrtWebAppName'
             inputs:
               azureSubscription: $(azureSubscription)
               appType: webAppLinux
