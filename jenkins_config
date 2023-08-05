@@ -1,0 +1,26 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Maven Authenticate') {
+            steps {
+                withMaven(maven: 'Maven package Java project Web App to linux with Azure') {
+                    // Replace 'MavenServiceConnection' with your Maven service connection ID
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+        
+        stage('Copy WAR file') {
+            steps {
+                sh 'cp target/*.war ${JENKINS_HOME}/workspace/${JOB_NAME}/artifacts/'
+            }
+        }
+    }
+    
+    post {
+        success {
+            archiveArtifacts artifacts: 'artifacts/*.war', fingerprint: true
+        }
+    }
+}
