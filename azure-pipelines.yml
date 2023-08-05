@@ -1,30 +1,33 @@
-name: Azure Web App CI/CD
+trigger:
+  branches:
+    include:
+      - heimdalltesting  # Replace with your branch name
 
-on:
-  push:
-    branches:
-      - Test1  # Replace with your branch name
+pool:
+  vmImage: 'ubuntu-latest'
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+steps:
+- task: MavenAuthenticate@0
+  displayName: 'Maven Authenticate'
+  inputs:
+    artifactsFeeds: 'mavenRepo'
+    mavenServiceConnections: 'Maven package Java project Web App to linux with Azure'  # Replace with your Maven service connection name
 
-    steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v2
+- task: Maven@3
+  displayName: 'Maven Package'
+  inputs:
+    mavenPomFile: 'MyWebApp/pom.xml'  # Replace with the path to your pom.xml file
+    options: '-DskipTests'
 
-    - name: Set up Java JDK
-      uses: actions/setup-java@v2
-      with:
-        java-version: '11'  # Replace with the Java version you are using (e.g., '11' or '17')
+- task: CopyFiles@2
+  displayName: 'Copy WAR file'
+  inputs:
+    SourceFolder: '$(Build.SourcesDirectory)/target'
+    Contents: '**/*.war'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
-    - name: Build with Maven
-      run: mvn clean package  # Replace with your Maven build command
-
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: 'heimdall-core'  # Replace with your Azure Web App name
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # Add this secret to your GitHub repository with the Azure Web App publish profile content
-
-az webapp deployment source config --name "MyFisrtWebAppName" --resource-group "MyFisrtWebAppName_group" --branch master --manual-integration --repo-url "https://github.com/pavanreddy255/pavanreddy255" --app-working-dir "/opt/java/openjdk"
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'war'
