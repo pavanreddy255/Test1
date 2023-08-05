@@ -1,54 +1,32 @@
-pipeline {
-    agent any
-    
-    tools {
-        maven "Maven3"
-    }
+pipeline:
+  agent:
+    label: 'your-jenkins-agent'  # Replace with the label of your Jenkins agent with necessary tools (JDK, Maven)
 
-    stages {
-        stage('Checkoout') {
-            steps {
-                checkout([$class: 'GitSCM', branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: '39a0281c-5ab6-4158-bb33-b7b1aab87117', url: 'https://github.com/akannan1087/myApr2022weekendRepo']]])
-            }
-        }
-        
-        stage ("Build") {
-            steps {
-                sh "mvn clean install -f MyWebApp/pom.xml"
-            }
-        }
+  environment:
+    AZURE_WEBAPP_NAME: 'heimdall-core'  # Replace with your Azure Web App name
+    AZURE_RESOURCE_GROUP: 'MyResourceGroup'  # Replace with your Azure resource group name
+    AZURE_WEBAPP_PUBLISH_PROFILE: 'your-azure-publish-profile'  # Replace with your Azure Web App publish profile credential ID in Jenkins
 
-        stage ("Code scan") {
-            steps {
-                withSonarQubeEnv ("SonarQube") {
-                sh "mvn sonar:sonar -f MyWebApp/pom.xml"
-            }
-          }
-        }
-        
-        stage("Quality Gate") {
-          steps{
-          timeout(time: 1, unit: 'HOURS') {
-             waitForQualityGate abortPipeline: true
-            }
-          } 
-        }
-        stage ("Nexus upload") {
-            steps{
-            nexusArtifactUploader artifacts: [[artifactId: 'MyWebApp', classifier: '', file: 'MyWebApp/target/MyWebApp.war', type: 'war']], credentialsId: '5f169013-6b16-4418-9b86-443c2eb41581', groupId: 'com.dept.app', nexusUrl: 'ec2-3-137-200-230.us-east-2.compute.amazonaws.com:8081/', nexusVersion: 'nexus3', protocol: 'http', repository: 'maven-snapshots', version: '1.0-SNAPSHOT'
-          } 
-        }
+  stages:
+    - stage: 'Build'
+      steps:
+        - script: 
+            git 'https://github.com/your-heimdall-repo.git'  # Replace with the URL of your Heimdall project repository
+        - script: 
+            mvn clean package
+      post:
+        success:
+          - archiveArtifacts:
+              artifacts: 'target/*.jar'  # Adjust the path if your Maven build output path is different
+          - cleanWs
 
-        stage ("dev deploy") {
-            steps{
-                deploy adapters: [tomcat9(credentialsId: '5ecba445-25fe-4ed7-bf36-9d15cec78cd3', path: '', url: 'http://ec2-18-188-253-180.us-east-2.compute.amazonaws.com:8080/')], contextPath: null, war: '**/*.war'
-            }
-        }
-    
-        stage ("slack") {
-            steps {
-                slackSend channel: 'apr-2022-weekend-batch', message: 'DEV Deployment was successful.'
-            }
-        }
-    }
-}
+    - stage: 'Deploy'
+      steps:
+        - script: 
+            az webapp config set --name $AZURE_WEBAPP_NAME --resource-group $AZURE_RESOURCE_GROUP --java-version 11
+            # If you need additional configurations, such as setting environment variables, you can add more 'az webapp config set' commands here
+
+        - script: 
+            az webapp deployment source config-zip --name $AZURE_WEBAPP_NAME --resource-group $AZURE_RESOURCE_GROUP --src 'target/*.jar'
+            # This command deploys the packaged JAR file to your Azure Web App. Adjust the path if your Maven build output path is different
+
