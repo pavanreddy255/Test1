@@ -3,31 +3,71 @@ trigger:
     include:
       - heimdalltesting  # Replace with your branch name
 
+pr:
+  branches:
+    include:
+      - main
+
 pool:
   vmImage: 'ubuntu-latest'
 
-steps:
-- task: MavenAuthenticate@0
-  displayName: 'Maven Authenticate'
-  inputs:
-    artifactsFeeds: 'mavenRepo'
-    mavenServiceConnections: 'Maven package Java project Web App to linux with Azure'  # Replace with your Maven service connection name
+variables:
+  azureSubscription: 'Your-Azure-Subscription'  # Replace with the name of your Azure service connection
+  appName: 'heimdall-core'  # Replace with your Azure Web App name
+  resourceGroup: 'Your-Resource-Group'  # Replace with your Azure resource group name
+  containerRegistry: 'Your-Container-Registry'  # Replace with your Azure Container Registry name
 
-- task: Maven@3
-  displayName: 'Maven Package'
-  inputs:
-    mavenPomFile: 'MyWebApp/pom.xml'  # Replace with the path to your pom.xml file
-    options: '-DskipTests'
+stages:
+  - stage: Build
+    displayName: 'Build Java Project'
+    jobs:
+      - job: Build
+        displayName: 'Build'
+        steps:
+          - task: UseJavaVersion@1
+            inputs:
+              versionSpec: '11'
 
-- task: CopyFiles@2
-  displayName: 'Copy WAR file'
-  inputs:
-    SourceFolder: '$(Build.SourcesDirectory)/target'
-    Contents: '**/*.war'
-    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+          - task: MavenAuthenticate@0
+            displayName: 'Maven Authenticate'
+            inputs:
+              artifactsFeeds: 'mavenRepo'
+              mavenServiceConnections: '$(azureSubscription)'
 
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact'
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'war'
+          - task: Maven@3
+            displayName: 'Maven Package'
+            inputs:
+              mavenPomFile: 'pom.xml'
+              options: '-DskipTests'
+
+          - task: CopyFiles@2
+            displayName: 'Copy WAR file'
+            inputs:
+              SourceFolder: '$(Pipeline.Workspace)/target'
+              Contents: '**/*.war'
+              TargetFolder: '$(Pipeline.Workspace)/publish'
+
+  - stage: Deploy
+    displayName: 'Deploy to Azure Web App'
+    dependsOn: Build
+    jobs:
+      - deployment: Deploy
+        displayName: 'Deploy'
+        environment:
+          name: 'staging'
+          resourceType: 'VirtualMachine'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: 'Azure Web App Deploy'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webAppLinux'
+                    appName: '$(appName)'
+                    package: '$(Pipeline.Workspace)/publish/*.war'
+                    resourceGroupName: '$(resourceGroup)'
+                    runtimeStack: 'TOMCAT|9.0-jre11'
+                    containerRegistry: '$(containerRegistry)'
+                    containerImageTag: '$(Build.BuildId)'
