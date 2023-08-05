@@ -1,4 +1,4 @@
-name: Deploy to Azure Web App
+name: Azure Web App CI/CD
 
 on:
   push:
@@ -12,35 +12,19 @@ jobs:
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v2
-    - task: Maven@3
-      displayName: 'Maven Package'
-      inputs:
-        mavenPomFile: 'MyWebApp/pom.xml'
-      
 
     - name: Set up Java JDK
       uses: actions/setup-java@v2
       with:
-        java-version: '11'  # Replace with the Java version you are using
+        java-version: '11'  # Replace with the Java version you are using (e.g., '11' or '17')
 
     - name: Build with Maven
-      run: mvn clean package
+      run: mvn clean package  # Replace with your Maven build command
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
-        app-name: 'MyFisrtWebAppName'  # Replace with your Azure Web App name
-        slot-name: 'production'  # Replace with the deployment slot name if using slots
+        app-name: 'heimdall-core'  # Replace with your Azure Web App name
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # Add this secret to your GitHub repository with the Azure Web App publish profile content
-        package: '$(Build.ArtifactStagingDirectory)/*.jar'
-        # Change the package path if your Maven build output path is different
 
-    - name: Install Azure CLI
-      uses: azure/CLI@v1
-
-    - name: Configure Azure Web App for Java
-      run: |
-        az webapp config set -n MyFisrtWebAppName -g MyFisrtWebAppName_group --java-version 11
-        # Replace 'MyResourceGroup' with your actual Azure resource group name
-
-    # Add more steps if required, such as setting up environment variables and configuring databases
+az webapp deployment source config --name "MyFisrtWebAppName" --resource-group "MyFisrtWebAppName_group" --branch master --manual-integration --repo-url "https://github.com/pavanreddy255/pavanreddy255" --app-working-dir "/opt/java/openjdk"
