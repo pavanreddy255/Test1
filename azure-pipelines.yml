@@ -12,6 +12,11 @@ jobs:
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v2
+    - task: Maven@3
+      displayName: 'Maven Package'
+      inputs:
+        mavenPomFile: 'MyWebApp/pom.xml'
+      
 
     - name: Set up Java JDK
       uses: actions/setup-java@v2
